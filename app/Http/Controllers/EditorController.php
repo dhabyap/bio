@@ -21,6 +21,15 @@ class EditorController extends Controller
         );
 
         $raw = $content->state;
+        // Ensure $raw is an array — model cast may not apply depending on storage
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($raw) || empty($raw)) {
+            $raw = [];
+        }
+
         if (isset($raw['name'])) {
             // old flat format —> migrate to profile + sections
             $initialState = [
@@ -32,7 +41,6 @@ class EditorController extends Controller
                 ],
                 'sections' => [],
             ];
-            // keep old links as one section
             if (!empty($raw['links'])) {
                 $initialState['sections'][] = [
                     'key' => 'links',
@@ -40,13 +48,23 @@ class EditorController extends Controller
                     'links' => $raw['links'],
                 ];
             }
-        } else {
+        } elseif (isset($raw['profile']) && is_array($raw['profile'])) {
             // already new format with profile + sections
             $initialState = $raw;
-            // ensure handle
             if (!isset($initialState['profile']['handle']) || empty($initialState['profile']['handle'])) {
                 $initialState['profile']['handle'] = '@' . $user->username;
             }
+        } else {
+            // completely empty/unrecognized — give default
+            $initialState = [
+                'profile' => [
+                    'name' => $user->name,
+                    'handle' => '@' . $user->username,
+                    'bio' => $user->bio ?? '',
+                    'avatar' => '',
+                ],
+                'sections' => [],
+            ];
         }
 
         return view('editor', compact('initialState'));
