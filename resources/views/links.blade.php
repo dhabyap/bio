@@ -256,7 +256,7 @@ document.querySelectorAll('.link-btn').forEach(function(el){
     // GA4
     if(window.gtag) gtag('event', 'link_click', {link_name: name});
     // DB — cookie-based CSRF biar sendBeacon works
-    var payload = JSON.stringify({link_name: name, link_url: url});
+    var payload = JSON.stringify({link_name: name, link_url: url, source: document.referrer || ''});
     if(navigator.sendBeacon){
       navigator.sendBeacon('/track-click', new Blob([payload], {type:'application/json'}));
     } else {

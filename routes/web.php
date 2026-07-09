@@ -17,6 +17,8 @@ Route::post('/track-click', [LinkController::class, 'track']);
 
 Route::get('/analytics', [LinkController::class, 'index'])
     ->middleware('auth');
+Route::post('/analytics/clear-test', [LinkController::class, 'clearTest'])
+    ->middleware('auth');
 
 Route::get('/editor', [EditorController::class, 'index'])
     ->middleware('auth');
