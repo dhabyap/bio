@@ -12,7 +12,7 @@ class EditorController extends Controller
         $user = auth()->user();
         $content = LinkContent::firstOrCreate(
             ['user_id' => $user->id],
-            ['state' => [
+            ['state' => json_encode([
                 'name' => $user->name,
                 'bio' => $user->bio ?? '',
                 'avatar' => $user->avatar ?? '',
@@ -20,7 +20,7 @@ class EditorController extends Controller
                     ['title' => 'GitHub', 'url' => 'https://github.com/' . $user->username, 'icon' => '⌘'],
                     ['title' => 'X (Twitter)', 'url' => 'https://x.com/' . $user->username, 'icon' => '𝕏'],
                 ],
-            ]]
+            ])]
         );
 
         return view('editor', compact('content'));
@@ -42,7 +42,7 @@ class EditorController extends Controller
 
         $content = LinkContent::updateOrCreate(
             ['user_id' => $user->id],
-            ['state' => $request->state]
+            ['state' => json_encode($request->state)]
         );
 
         return redirect('/editor')->with('status', 'Saved!');
