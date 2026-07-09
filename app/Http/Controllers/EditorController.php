@@ -21,14 +21,18 @@ class EditorController extends Controller
         );
 
         $raw = $content->state;
-        // Ensure $raw is an array — model cast may not apply depending on storage
+        // Deep decode: if state is string, decode. If nested values (like links) are strings, decode them too.
         if (is_string($raw)) {
-            $decoded = json_decode($raw, true);
-            $raw = is_array($decoded) ? $decoded : [];
+            $raw = json_decode($raw, true);
         }
-        if (!is_array($raw) || empty($raw)) {
-            $raw = [];
+        
+        // Handle potential double-encoded JSON inside (if MySQL stored string as JSON)
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
         }
+        
+        if (!is_array($raw)) $raw = [];
+
 
         if (isset($raw['name'])) {
             // old flat format —> migrate to profile + sections
