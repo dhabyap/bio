@@ -99,52 +99,21 @@ class EditorController extends Controller
         $prompt = $request->input('prompt');
         $user = auth()->user();
 
-        // Build LLM system prompt
-        $systemPrompt = "You are a Link-in-bio page generator. Generate a JSON response for a personal link page based on the user's description. Return ONLY valid JSON, no markdown, no explanations.
+        // Compact system+user prompt — model has reasoning overhead
+        $userContent = "Generate a JSON link-in-bio page. Name/Handle from context. Bio 1-2 sentences.
+Sections: 2-4, each with 1-5 links. Use real URLs (GitHub, X, etc) when known, else #.
+Return ONLY this JSON structure, no other text:
+{\"profile\":{\"name\":\"\",\"handle\":\"\",\"bio\":\"\",\"avatar\":\"\"},\"sections\":[{\"key\":\"\",\"label\":\"\",\"links\":[{\"icon\":\"\",\"title\":\"\",\"subtitle\":\"\",\"url\":\"\"}]}]}
 
-The JSON structure must be:
-{
-  \"profile\": {
-    \"name\": \"...\",
-    \"handle\": \"@...\",
-    \"bio\": \"...\",
-    \"avatar\": \"\"
-  },
-  \"sections\": [
-    {
-      \"key\": \"section-xxx\",
-      \"label\": \"SECTION LABEL\",
-      \"links\": [
-        {
-          \"icon\": \"emoji or symbol\",
-          \"title\": \"Link title\",
-          \"subtitle\": \"Short description\",
-          \"url\": \"https://...\"
-        }
-      ]
-    }
-  ]
-}
-
-Guidelines:
-- Profile name from context, handle @username consistent with name
-- Bio: 1-2 sentences max
-- Sections: 2-4 sections max, each with 1-5 links
-- Section keys: use kebab-case unique ids
-- Icons: relevant emoji for each link
-- URLs: use real URLs when known (GitHub, X/Twitter, LinkedIn, etc.), placeholder # for unknown
-- Subtitles: short, descriptive
-- First section should be most important (Highlight/Featured)
-- Use real platform URLs when possible";
+$prompt";
 
         $payload = json_encode([
             'model' => 'test',
             'messages' => [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => "Generate my link-in-bio page. $prompt"],
+                ['role' => 'user', 'content' => $userContent],
             ],
-            'temperature' => 0.7,
-            'max_tokens' => 2000,
+            'temperature' => 0.1,
+            'max_tokens' => 8000,
         ]);
 
         $ch = curl_init();
@@ -168,18 +137,33 @@ Guidelines:
         }
 
         $decoded = json_decode($response, true);
-        $content = $decoded['choices'][0]['message']['content'] ?? null;
+        $message = $decoded['choices'][0]['message'] ?? [];
 
-        if (!$content) {
+        // Try content first, then reasoning_content
+        $content = $message['content'] ?? '';
+        if (empty($content)) {
+            $content = $message['reasoning_content'] ?? '';
+        }
+
+        if (empty($content)) {
             return response()->json(['error' => 'Empty AI response'], 500);
         }
 
-        // Strip markdown code blocks if present
-        $content = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', trim($content));
+        // Strip markdown code blocks
+        $content = preg_replace('/^```(?:json)?\s*\n?|\n?\s*```$/i', '', trim($content));
+
+        // Try to extract JSON from response — find first { and last }
+        $jsonStart = strpos($content, '{');
+        $jsonEnd = strrpos($content, '}');
+        if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd > $jsonStart) {
+            $content = substr($content, $jsonStart, $jsonEnd - $jsonStart + 1);
+        }
 
         $state = json_decode($content, true);
         if (!$state || !isset($state['profile'])) {
-            return response()->json(['error' => 'AI returned invalid format'], 500);
+            // Try JSON decode with error reporting
+            $err = json_last_error_msg();
+            return response()->json(['error' => "AI returned invalid format: $err"], 500);
         }
 
         // Ensure handle
