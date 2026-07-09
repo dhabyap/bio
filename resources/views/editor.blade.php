@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Editor — @by0x_</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;600&display=swap');
   :root{
-    --bg: #08070c; --bg-soft: #0f0d16; --bg-card: #120f1c;
-    --purple: #a855f7; --purple-deep:#6d28d9; --purple-glow: #c084fc;
-    --green: #4ade80; --red:#f87171;
-    --text: #f2eefc; --text-dim: #9a92ad; --text-faint:#5f5870;
-    --line: rgba(168,85,247,0.16);
+    --bg:#08070c; --bg-soft:#0f0d16; --bg-card:#120f1c;
+    --purple:#a855f7; --purple-deep:#6d28d9; --purple-glow:#c084fc;
+    --green:#4ade80; --red:#f87171;
+    --text:#f2eefc; --text-dim:#9a92ad; --text-faint:#5f5870;
+    --line:rgba(168,85,247,0.16);
   }
   *{ margin:0; padding:0; box-sizing:border-box; }
   body{
@@ -21,14 +22,14 @@
   body::before{
     content:''; position:fixed; top:-15%; left:50%; transform:translateX(-50%);
     width:900px; height:900px;
-    background:radial-gradient(circle, rgba(168,85,247,0.14) 0%, rgba(168,85,247,0) 65%);
+    background:radial-gradient(circle, rgba(168,85,247,0.14) 0%, transparent 65%);
     pointer-events:none; z-index:0;
   }
-  .shell{ position:relative; z-index:1; max-width:720px; margin:0 auto; padding:32px 24px 60px; }
+  .shell{ position:relative; z-index:1; max-width:960px; margin:0 auto; padding:32px 24px 60px; }
 
   .topbar{
     display:flex; align-items:center; justify-content:space-between;
-    margin-bottom:28px; flex-wrap:wrap; gap:12px;
+    margin-bottom:22px; flex-wrap:wrap; gap:14px;
   }
   .brand{ display:flex; align-items:center; gap:10px; }
   .brand .dot{ width:10px;height:10px;border-radius:50%; background:var(--purple); box-shadow:0 0 10px var(--purple-glow); }
@@ -38,10 +39,14 @@
   .nav-btn{
     font-family:'JetBrains Mono', monospace; font-size:12px;
     padding:9px 14px; border-radius:9px; border:1px solid var(--line);
-    background:var(--bg-card); color:var(--text-dim); text-decoration:none; cursor:pointer;
-    transition:.15s;
+    background:var(--bg-soft); color:var(--text-dim); text-decoration:none; transition:.15s;
+    cursor:pointer;
   }
   .nav-btn:hover{ border-color:var(--purple); color:var(--text); }
+  .nav-btn.accent{
+    background:linear-gradient(135deg, rgba(168,85,247,0.22), rgba(109,40,217,0.14));
+    color:var(--purple-glow); border-color:rgba(168,85,247,0.4);
+  }
   .nav-btn.primary{
     background:linear-gradient(135deg, var(--purple-deep), var(--purple));
     color:#fff; border:none; font-weight:600;
@@ -50,17 +55,22 @@
 
   .card{
     background:var(--bg-card); border:1px solid var(--line);
-    border-radius:14px; padding:24px; margin-bottom:20px;
+    border-radius:14px; padding:20px; margin-bottom:20px;
   }
   .card-title{
     font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
-    letter-spacing:.08em; color:var(--text-dim); margin-bottom:16px;
-    display:flex; align-items:center; gap:8px;
+    letter-spacing:.12em; color:var(--text-dim); margin-bottom:16px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
   }
-  .card-title .dot-sm{ width:6px;height:6px;border-radius:50%; background:var(--purple); box-shadow:0 0 8px var(--purple-glow); }
-  .field-grid{ display:grid; gap:14px; }
-  .field-row{ }
-  label{ display:block; font-size:11px; color:var(--text-faint); margin-bottom:4px; }
+  .card-title .label{ display:flex; align-items:center; gap:8px; }
+  .card-title .label::before{
+    content:''; width:6px; height:6px; border-radius:50%;
+    background:var(--purple); box-shadow:0 0 8px var(--purple-glow);
+  }
+
+  .field-row{ margin-bottom:14px; }
+  .field-row:last-child{ margin-bottom:0; }
+  label{ display:block; font-size:11px; color:var(--text-faint); margin-bottom:5px; }
   input, textarea{
     width:100%; padding:10px 12px; border-radius:8px;
     border:1px solid var(--line); background:var(--bg-soft);
@@ -68,37 +78,59 @@
     transition:border-color .15s;
   }
   input:focus, textarea:focus{ border-color:var(--purple); box-shadow:0 0 0 1px var(--purple) inset; }
-  textarea{ min-height:56px; resize:vertical; }
+  textarea{ min-height:60px; resize:vertical; }
+
+  .section-block{ margin-bottom:24px; }
+  .section-hdr{
+    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  }
+  .section-hdr input{
+    font-size:12px; font-family:'JetBrains Mono',monospace; text-transform:uppercase;
+    letter-spacing:.08em; padding:7px 10px; background:var(--bg-soft);
+    border:1px solid var(--line); border-radius:7px; color:var(--text);
+    outline:none; flex:1;
+  }
+  .section-hdr input:focus{ border-color:var(--purple); }
+  .section-rm{
+    font-size:11px; color:var(--text-faint); background:none; border:none; cursor:pointer;
+    padding:4px 8px; border-radius:6px; font-family:'JetBrains Mono',monospace;
+  }
+  .section-rm:hover{ color:var(--red); background:rgba(248,113,113,0.1); }
 
   .link-item{
-    border:1px solid var(--line); border-radius:10px;
-    padding:14px; margin-bottom:10px;
+    background:var(--bg-soft); border:1px solid var(--line);
+    border-radius:10px; padding:14px; margin-bottom:8px;
   }
-  .link-item .row{ display:grid; grid-template-columns:36px 1fr 36px; gap:8px; margin-bottom:8px; }
-  .link-item .icon-input{ text-align:center; font-size:15px; }
-  .link-item .url-row{ display:grid; grid-template-columns:1fr 52px; gap:8px; }
-  .link-actions{ display:flex; gap:6px; justify-content:flex-end; margin-top:6px; }
+  .link-grid{ display:grid; grid-template-columns:36px 1fr 1fr; gap:8px; margin-bottom:8px; }
+  .link-grid input{ padding:8px 10px; font-size:12px; }
+  .link-grid .icon-input{ text-align:center; font-size:14px; }
+  .link-url-row{ display:grid; grid-template-columns:1fr 32px; gap:8px; }
+  .link-url-row input{ padding:8px 10px; font-size:12px; }
+  .link-actions{ display:flex; justify-content:flex-end; gap:6px; margin-top:6px; }
   .mini-btn{
     font-size:11px; color:var(--text-faint); background:none; border:none; cursor:pointer;
-    padding:2px 7px; border-radius:5px; font-family:'JetBrains Mono', monospace; transition:.1s;
+    padding:3px 8px; border-radius:5px; font-family:'JetBrains Mono',monospace; transition:.1s;
   }
   .mini-btn:hover{ color:var(--purple-glow); background:rgba(168,85,247,0.1); }
+  .mini-btn.del:hover{ color:var(--red); background:rgba(248,113,113,0.1); }
   .add-btn{
     width:100%; padding:9px; border-radius:8px; border:1px dashed rgba(168,85,247,0.3);
     background:transparent; color:var(--text-dim); font-size:12px; cursor:pointer;
-    font-family:'JetBrains Mono', monospace; transition:.15s;
+    font-family:'JetBrains Mono',monospace; transition:.15s;
   }
   .add-btn:hover{ border-color:var(--purple); color:var(--purple-glow); }
 
-  /* ---- preview ---- */
+  .empty{ text-align:center; padding:30px 20px; color:var(--text-faint); font-size:12px; background:var(--bg-soft); border-radius:10px; border:1px dashed var(--line); }
+
+  /* ---- preview inbox ---- */
   .preview-box{
     background:#050408; border:1px solid var(--line);
     border-radius:18px; padding:28px 22px 24px; text-align:center;
     max-width:340px; margin:0 auto;
   }
-  .pv-avatar{ width:64px;height:64px;border-radius:50%; object-fit:cover; margin:0 auto 10px; display:block; background:#1a1625; }
-  .pv-name{ font-size:17px; font-weight:700; }
-  .pv-handle{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--purple-glow); margin-top:2px; }
+  .pv-avatar{ width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block;background:#1a1625;border:2px solid var(--purple);box-shadow:0 0 0 4px rgba(168,85,247,0.08),0 0 20px rgba(168,85,247,0.2);}
+  .pv-name{ font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; }
+  .pv-handle{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--purple-glow); margin-top:3px; }
   .pv-bio{ font-size:13px; color:var(--text-dim); margin-top:8px; line-height:1.5; }
   .pv-section-label{ font-family:'JetBrains Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-dim); margin:16px 2px 8px; }
   .pv-links{ display:flex; flex-direction:column; gap:7px; }
@@ -108,10 +140,14 @@
   .pv-link-sub{ font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:1px; }
   .pv-footer{ margin-top:20px; font-size:9px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
 
+  /* ---- avatar upload hint ---- */
+  .avatar-preview-wrap{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .avatar-preview-wrap .mini-av{ width:44px;height:44px;border-radius:50%;object-fit:cover;background:#1a1625;border:1px solid var(--purple); }
+
   ::-webkit-scrollbar{ width:6px; }
   ::-webkit-scrollbar-thumb{ background:rgba(168,85,247,0.2); border-radius:3px; }
 
-  @media(max-width:600px){ .shell{ padding:20px 14px 40px; } }
+  @media(max-width:640px){ .shell{ padding:20px 14px 40px; } }
 </style>
 </head>
 <body>
@@ -137,40 +173,44 @@
       </div>
     </div>
     <div class="nav-actions">
+      <a class="nav-btn accent" href="/u/{{ auth()->user()->username }}" target="_blank">🔗 View Page →</a>
       <a class="nav-btn" href="/analytics">← Analytics</a>
       <button class="nav-btn primary" id="saveBtn">Save</button>
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+  <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:start;">
 
-    <!-- === FORM === -->
+    <!-- === EDIT PANEL === -->
     <div>
-
+      <!-- Profile -->
       <div class="card">
-        <div class="card-title"><span class="dot-sm"></span>Profile</div>
-        <div class="field-grid">
-          <div class="field-row">
-            <label>Nama</label>
-            <input id="f-name" data-bind="profile.name">
-          </div>
-          <div class="field-row">
-            <label>Handle</label>
-            <input id="f-handle" data-bind="profile.handle">
-          </div>
-          <div class="field-row">
-            <label>Bio</label>
-            <textarea id="f-bio" data-bind="profile.bio"></textarea>
-          </div>
-          <div class="field-row">
-            <label>Avatar URL</label>
-            <input id="f-avatar" data-bind="profile.avatar">
-          </div>
+        <div class="card-title"><span class="label">Profile</span></div>
+        <div class="avatar-preview-wrap">
+          <img class="mini-av" id="miniAv" src="" alt="">
+          <label style="color:var(--text-faint);font-size:11px;">Avatar preview</label>
+        </div>
+        <div class="field-row">
+          <label>Avatar URL</label>
+          <input id="f-avatar" placeholder="https://example.com/avatar.jpg">
+        </div>
+        <div class="field-row">
+          <label>Nama</label>
+          <input id="f-name" placeholder="Your name">
+        </div>
+        <div class="field-row">
+          <label>Handle</label>
+          <input id="f-handle" placeholder="@username">
+        </div>
+        <div class="field-row">
+          <label>Bio</label>
+          <textarea id="f-bio" placeholder="Short bio"></textarea>
         </div>
       </div>
 
+      <!-- Sections -->
       <div class="card">
-        <div class="card-title"><span class="dot-sm"></span>Sections</div>
+        <div class="card-title"><span class="label">Sections</span></div>
         <div id="sectionsWrap"></div>
       </div>
 
@@ -178,13 +218,12 @@
         @csrf
         <input type="hidden" name="state_json" id="stateJson">
       </form>
-
     </div>
 
-    <!-- === PREVIEW === -->
+    <!-- === PREVIEW PANEL === -->
     <div>
-      <div class="card">
-        <div class="card-title"><span class="dot-sm"></span>Preview</div>
+      <div class="card" style="position:sticky;top:20px;">
+        <div class="card-title"><span class="label">Preview</span></div>
         <div class="preview-box">
           <img class="pv-avatar" id="pv-avatar" src="" alt="">
           <div class="pv-name" id="pv-name"></div>
@@ -193,6 +232,7 @@
           <div id="pv-sections"></div>
           <div class="pv-footer">powered by <span style="color:var(--purple-glow)">Linkr</span></div>
         </div>
+        <a class="nav-btn accent" href="/u/{{ auth()->user()->username }}" target="_blank" style="display:block;text-align:center;margin-top:16px;">🔗 Open Live Page →</a>
       </div>
     </div>
 
@@ -206,7 +246,7 @@ function escH(s){ var d=document.createElement('div');d.textContent=s||'';return
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
 var defaultState = {
-  profile:{ name:'', handle:'', bio:'', avatar:'' },
+  profile:{ name:'', handle:'@', bio:'', avatar:'' },
   sections:[]
 };
 
@@ -222,74 +262,73 @@ function renderForm(){
   document.getElementById('f-handle').value = state.profile.handle||'';
   document.getElementById('f-bio').value = state.profile.bio||'';
   document.getElementById('f-avatar').value = state.profile.avatar||'';
+  document.getElementById('miniAv').src = state.profile.avatar||'';
 
   sectionsEl.innerHTML = '';
   if(!state.sections) state.sections = [];
 
+  if(state.sections.length === 0){
+    var e = document.createElement('div');
+    e.className = 'empty';
+    e.textContent = 'No sections yet. Click "+ Section" to add one.';
+    sectionsEl.appendChild(e);
+  }
+
   state.sections.forEach(function(s, si){
     var wrap = document.createElement('div');
-    wrap.style.marginBottom = '8px';
+    wrap.className = 'section-block';
 
     var hdr = document.createElement('div');
-    hdr.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';
-    var lbl = document.createElement('input');
-    lbl.style.cssText = 'font-size:12px;font-family:JetBrains Mono,monospace;text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;';
-    lbl.placeholder = 'Section label';
-    lbl.value = s.label||'';
-    lbl.oninput = function(){ s.label = lbl.value; syncPreview(); };
-    hdr.appendChild(lbl);
-
-    var rmSection = document.createElement('button');
-    rmSection.type = 'button';
-    rmSection.className = 'mini-btn';
-    rmSection.textContent = '✕';
-    rmSection.onclick = function(){ state.sections.splice(si,1); renderForm(); syncPreview(); };
-    hdr.appendChild(rmSection);
+    hdr.className = 'section-hdr';
+    hdr.innerHTML =
+      '<input id="sec-lbl-'+si+'" placeholder="SECTION LABEL" value="'+escA(s.label||'')+'">'+
+      '<button type="button" class="section-rm">✕ Delete</button>';
+    hdr.querySelector('input').oninput = function(){ s.label = hdr.querySelector('input').value; syncPreview(); };
+    hdr.querySelector('.section-rm').onclick = function(){
+      if(!confirm('Delete "'+(s.label||'this section')+'" and all its links?')) return;
+      state.sections.splice(si,1); renderForm(); syncPreview();
+    };
     wrap.appendChild(hdr);
 
     (s.links||[]).forEach(function(lk, li){
       var item = document.createElement('div');
       item.className = 'link-item';
       item.innerHTML =
-        '<div class="row">'+
+        '<div class="link-grid">'+
           '<input class="icon-input" placeholder="🔗" value="'+escA(lk.icon)+'">'+
           '<input placeholder="Title" value="'+escA(lk.title)+'">'+
           '<input placeholder="Sub" value="'+escA(lk.subtitle||'')+'">'+
         '</div>'+
-        '<div class="url-row">'+
+        '<div class="link-url-row">'+
           '<input placeholder="https://..." value="'+escA(lk.url||'')+'">'+
-          '<button type="button" class="mini-btn del" style="border:1px solid rgba(248,113,113,0.3);color:var(--red);">✕</button>'+
+          '<button type="button" class="mini-btn del" style="border:1px solid rgba(248,113,113,0.3);">✕</button>'+
         '</div>'+
         '<div class="link-actions">'+
-          '<button type="button" class="mini-btn" data-act="up">↑</button>'+
-          '<button type="button" class="mini-btn" data-act="down">↓</button>'+
+          '<button type="button" class="mini-btn">↑ Move up</button>'+
+          '<button type="button" class="mini-btn">↓ Move down</button>'+
         '</div>';
 
-      var inputs = item.querySelectorAll('.row input');
-      inputs[0].oninput = function(){ lk.icon = inputs[0].value; syncPreview(); };
-      inputs[1].oninput = function(){ lk.title = inputs[1].value; syncPreview(); };
-      inputs[2].oninput = function(){ lk.subtitle = inputs[2].value; syncPreview(); };
+      var i = item.querySelectorAll('.link-grid input');
+      i[0].oninput = function(){ lk.icon=i[0].value; syncPreview(); };
+      i[1].oninput = function(){ lk.title=i[1].value; syncPreview(); };
+      i[2].oninput = function(){ lk.subtitle=i[2].value; syncPreview(); };
 
-      var urlInput = item.querySelector('.url-row input');
-      urlInput.oninput = function(){ lk.url = urlInput.value; syncPreview(); };
+      var urlIn = item.querySelector('.link-url-row input');
+      urlIn.oninput = function(){ lk.url=urlIn.value; syncPreview(); };
 
-      item.querySelector('.del').onclick = function(){
-        s.links.splice(li,1);
-        renderForm(); syncPreview();
-      };
-      item.querySelector('[data-act="up"]').onclick = function(){ moveL(si,li,-1); };
-      item.querySelector('[data-act="down"]').onclick = function(){ moveL(si,li,1); };
+      item.querySelector('.del').onclick = function(){ s.links.splice(li,1); renderForm(); syncPreview(); };
+      item.querySelectorAll('.link-actions .mini-btn')[0].onclick = function(){ moveL(si,li,-1); };
+      item.querySelectorAll('.link-actions .mini-btn')[1].onclick = function(){ moveL(si,li,1); };
 
       wrap.appendChild(item);
     });
 
     var addL = document.createElement('button');
-    addL.type = 'button';
-    addL.className = 'add-btn';
-    addL.textContent = '+ Link';
+    addL.type = 'button'; addL.className = 'add-btn';
+    addL.textContent = '+ Add Link';
     addL.onclick = function(){
       if(!s.links) s.links=[];
-      s.links.push({icon:'🔗',title:'Link','subtitle':'','url':'#'});
+      s.links.push({icon:'🔗',title:'New Link',subtitle:'',url:'#'});
       renderForm(); syncPreview();
     };
     wrap.appendChild(addL);
@@ -297,12 +336,11 @@ function renderForm(){
   });
 
   var addSec = document.createElement('button');
-  addSec.type = 'button';
-  addSec.className = 'add-btn';
+  addSec.type = 'button'; addSec.className = 'add-btn';
   addSec.style.marginTop = '12px';
-  addSec.textContent = '+ Section';
+  addSec.textContent = '+ New Section';
   addSec.onclick = function(){
-    state.sections.push({key:'sec-'+uid(),label:'Section',links:[]});
+    state.sections.push({key:'sec-'+uid(),label:'SECTION',links:[]});
     renderForm(); syncPreview();
   };
   sectionsEl.appendChild(addSec);
@@ -318,21 +356,26 @@ function moveL(si,li,dir){
 
 ['f-name','f-handle','f-bio','f-avatar'].forEach(function(id){
   document.getElementById(id).addEventListener('input', function(e){
-    var k = e.target.getAttribute('data-bind').split('.')[1];
-    state.profile[k] = e.target.value;
+    if(id==='f-name') state.profile.name = e.target.value;
+    if(id==='f-handle') state.profile.handle = e.target.value;
+    if(id==='f-bio') state.profile.bio = e.target.value;
+    if(id==='f-avatar') state.profile.avatar = e.target.value;
     syncPreview();
   });
 });
 
 function syncPreview(){
   document.getElementById('pv-avatar').src = state.profile.avatar||'';
+  document.getElementById('miniAv').src = state.profile.avatar||'';
   document.getElementById('pv-name').textContent = state.profile.name||'';
   document.getElementById('pv-handle').textContent = state.profile.handle||'';
   document.getElementById('pv-bio').textContent = state.profile.bio||'';
   var pv = document.getElementById('pv-sections');
   pv.innerHTML = '';
+  var any = false;
   (state.sections||[]).forEach(function(sec){
     if(!sec.links || !sec.links.length) return;
+    any = true;
     var lbl = document.createElement('div');
     lbl.className = 'pv-section-label';
     lbl.textContent = sec.label;
@@ -348,6 +391,9 @@ function syncPreview(){
     });
     pv.appendChild(w);
   });
+  if(!any){
+    pv.innerHTML = '<div style="color:var(--text-faint);font-size:11px;padding:16px 0;">Add links to see preview</div>';
+  }
   stateJson.value = JSON.stringify(state);
 }
 
