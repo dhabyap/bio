@@ -99,12 +99,45 @@ class LinkController extends Controller
             // Default state if no saved content
             $state = [
                 'name' => $user->name,
+                'handle' => '@' . $user->username,
                 'bio' => $user->bio ?? '',
                 'avatar' => $user->avatar ?? '',
                 'links' => [],
             ];
         } else {
-            $state = $content->state;
+            $raw = $content->state;
+            if (isset($raw['name'])) {
+                // old flat format
+                $state = [
+                    'name' => $raw['name'] ?? $user->name,
+                    'handle' => '@' . $user->username,
+                    'bio' => $raw['bio'] ?? '',
+                    'avatar' => $raw['avatar'] ?? '',
+                    'links' => $raw['links'] ?? [],
+                ];
+            } elseif (isset($raw['profile'])) {
+                // new profile+sections format
+                $state = [
+                    'name' => $raw['profile']['name'] ?? $user->name,
+                    'handle' => $raw['profile']['handle'] ?? '@' . $user->username,
+                    'bio' => $raw['profile']['bio'] ?? '',
+                    'avatar' => $raw['profile']['avatar'] ?? '',
+                    'links' => [],
+                ];
+                foreach ($raw['sections'] ?? [] as $sec) {
+                    foreach ($sec['links'] ?? [] as $lk) {
+                        $state['links'][] = $lk;
+                    }
+                }
+            } else {
+                $state = [
+                    'name' => $user->name,
+                    'handle' => '@' . $user->username,
+                    'bio' => $user->bio ?? '',
+                    'avatar' => $user->avatar ?? '',
+                    'links' => [],
+                ];
+            }
         }
 
         return view('links', compact('user', 'state'));

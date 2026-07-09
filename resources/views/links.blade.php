@@ -34,7 +34,7 @@
   @endif
 
   <h1>{{ $state['name'] }}</h1>
-  <div class="handle">@ {{ $user->username }}</div>
+  <div class="handle">{{ $state['handle'] }}</div>
 
   @if(!empty($state['bio']))
     <div class="bio">{{ $state['bio'] }}</div>

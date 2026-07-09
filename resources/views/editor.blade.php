@@ -1,416 +1,362 @@
-<!--
-  ASUMSI DATA (sesuaikan sama controller-mu):
-  $initialState (opsional) = array/object hasil json_decode konten tersimpan, bentuknya:
-  [
-    'profile' => ['name'=>'Putra','handle'=>'@by0x_','bio'=>'...','avatar'=>'https://...'],
-    'sections' => [
-      ['key'=>'highlight','label'=>'Highlight','links'=>[['icon'=>'🌙','title'=>'Moove Ambassador','subtitle'=>'...','url'=>'#']]],
-      ['key'=>'social','label'=>'Social','links'=>[...]],
-      ...
-    ]
-  ]
-  Kalau belum ada, dipakein default (persis konten links.blade.php sekarang) biar editor tetep kepake.
-
-  Submit: form POST ke /editor (ganti sesuai route-mu), isinya 1 hidden input
-  "state_json" berisi JSON lengkap. Backend tinggal json_decode($request->state_json)
-  lalu simpan ke DB / tulis ulang links.blade.php via templating — jauh lebih simple
-  daripada parsing array field bernested nama.
--->
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Edit Content — @by0x_</title>
+<title>Editor — @by0x_</title>
 <style>
   :root{
-    --bg:#08070c; --bg-soft:#0f0d16; --bg-card:#120f1c;
-    --purple:#a855f7; --purple-deep:#6d28d9; --purple-glow:#c084fc;
-    --text:#f2eefc; --text-dim:#9a92ad; --text-faint:#5f5870;
+    --bg: #08070c; --bg-soft: #0f0d16; --bg-card: #120f1c;
+    --purple: #a855f7; --purple-deep:#6d28d9; --purple-glow: #c084fc;
+    --green: #4ade80; --red:#f87171;
+    --text: #f2eefc; --text-dim: #9a92ad; --text-faint:#5f5870;
     --line: rgba(168,85,247,0.16);
   }
   *{ margin:0; padding:0; box-sizing:border-box; }
-  html,body{ height:100%; }
   body{
     background:var(--bg); color:var(--text);
     font-family:'Inter',-apple-system,sans-serif;
-    display:flex; flex-direction:column; overflow:hidden;
+    min-height:100vh; position:relative; overflow-x:hidden;
   }
+  body::before{
+    content:''; position:fixed; top:-15%; left:50%; transform:translateX(-50%);
+    width:900px; height:900px;
+    background:radial-gradient(circle, rgba(168,85,247,0.14) 0%, rgba(168,85,247,0) 65%);
+    pointer-events:none; z-index:0;
+  }
+  .shell{ position:relative; z-index:1; max-width:720px; margin:0 auto; padding:32px 24px 60px; }
 
-  /* ---- top bar ---- */
   .topbar{
     display:flex; align-items:center; justify-content:space-between;
-    padding:14px 22px; border-bottom:1px solid rgba(168,85,247,0.14);
-    background:var(--bg-soft); z-index:5;
+    margin-bottom:28px; flex-wrap:wrap; gap:12px;
   }
-  .brand{ display:flex; align-items:center; gap:9px; }
-  .brand .dot{ width:9px;height:9px;border-radius:50%; background:var(--purple); box-shadow:0 0 10px var(--purple-glow); }
-  .brand span{ font-weight:700; font-size:15px; }
-  .topbar-actions{ display:flex; gap:8px; align-items:center; }
-  .save-status{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--text-faint); margin-right:6px; }
-  .btn{
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .dot{ width:10px;height:10px;border-radius:50%; background:var(--purple); box-shadow:0 0 10px var(--purple-glow); }
+  .brand h1{ font-size:19px; font-weight:700; letter-spacing:-0.01em; }
+  .brand .sub{ font-size:12px; color:var(--text-dim); margin-top:2px; }
+  .nav-actions{ display:flex; gap:8px; }
+  .nav-btn{
     font-family:'JetBrains Mono', monospace; font-size:12px;
-    padding:9px 16px; border-radius:9px; border:1px solid rgba(168,85,247,0.2);
+    padding:9px 14px; border-radius:9px; border:1px solid var(--line);
     background:var(--bg-card); color:var(--text-dim); text-decoration:none; cursor:pointer;
     transition:.15s;
   }
-  .btn:hover{ border-color:var(--purple); color:var(--text); }
-  .btn.primary{
+  .nav-btn:hover{ border-color:var(--purple); color:var(--text); }
+  .nav-btn.primary{
     background:linear-gradient(135deg, var(--purple-deep), var(--purple));
     color:#fff; border:none; font-weight:600;
   }
-  .btn.primary:hover{ opacity:.9; }
+  .nav-btn.primary:hover{ opacity:.9; }
 
-  /* ---- layout ---- */
-  .body-split{ flex:1; display:flex; overflow:hidden; }
-  .panel-edit{
-    width:46%; min-width:340px; overflow-y:auto; padding:26px 24px 80px;
-    border-right:1px solid rgba(168,85,247,0.12);
+  .card{
+    background:var(--bg-card); border:1px solid var(--line);
+    border-radius:14px; padding:24px; margin-bottom:20px;
   }
-  .panel-preview{
-    flex:1; overflow-y:auto; display:flex; justify-content:center;
-    padding:40px 24px; background:
-      radial-gradient(circle at 30% 0%, rgba(168,85,247,0.10), transparent 55%);
-  }
-
-  .fieldset{ margin-bottom:30px; }
-  .fieldset-title{
+  .card-title{
     font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
-    letter-spacing:.1em; color:var(--text-dim); margin-bottom:12px;
+    letter-spacing:.08em; color:var(--text-dim); margin-bottom:16px;
     display:flex; align-items:center; gap:8px;
   }
-  .fieldset-title::before{
-    content:''; width:6px; height:6px; border-radius:50%;
-    background:var(--purple); box-shadow:0 0 8px var(--purple-glow);
-  }
-  label.field-label{ display:block; font-size:11px; color:var(--text-faint); margin:0 0 5px; }
-  input.field, textarea.field{
+  .card-title .dot-sm{ width:6px;height:6px;border-radius:50%; background:var(--purple); box-shadow:0 0 8px var(--purple-glow); }
+  .field-grid{ display:grid; gap:14px; }
+  .field-row{ }
+  label{ display:block; font-size:11px; color:var(--text-faint); margin-bottom:4px; }
+  input, textarea{
     width:100%; padding:10px 12px; border-radius:8px;
-    border:1px solid rgba(168,85,247,0.16); background:var(--bg-card);
-    color:var(--text); font-size:13px; margin-bottom:12px; outline:none;
-    font-family:'Inter',sans-serif; resize:vertical;
+    border:1px solid var(--line); background:var(--bg-soft);
+    color:var(--text); font-size:13px; outline:none; font-family:'Inter',sans-serif;
+    transition:border-color .15s;
   }
-  input.field:focus, textarea.field:focus{ border-color:var(--purple); box-shadow:0 0 0 1px var(--purple) inset; }
-  textarea.field{ min-height:56px; }
+  input:focus, textarea:focus{ border-color:var(--purple); box-shadow:0 0 0 1px var(--purple) inset; }
+  textarea{ min-height:56px; resize:vertical; }
 
-  .link-card{
-    background:var(--bg-card); border:1px solid rgba(168,85,247,0.12);
-    border-radius:10px; padding:12px 12px 4px; margin-bottom:10px; position:relative;
+  .link-item{
+    border:1px solid var(--line); border-radius:10px;
+    padding:14px; margin-bottom:10px;
   }
-  .link-card-row{ display:grid; grid-template-columns:52px 1fr; gap:8px; }
-  .link-card .icon-input{ text-align:center; font-size:16px; }
-  .link-card-actions{
-    display:flex; justify-content:flex-end; gap:6px; margin:-2px 0 8px;
-  }
+  .link-item .row{ display:grid; grid-template-columns:36px 1fr 36px; gap:8px; margin-bottom:8px; }
+  .link-item .icon-input{ text-align:center; font-size:15px; }
+  .link-item .url-row{ display:grid; grid-template-columns:1fr 52px; gap:8px; }
+  .link-actions{ display:flex; gap:6px; justify-content:flex-end; margin-top:6px; }
   .mini-btn{
     font-size:11px; color:var(--text-faint); background:none; border:none; cursor:pointer;
-    padding:2px 6px; border-radius:5px; font-family:'JetBrains Mono', monospace;
+    padding:2px 7px; border-radius:5px; font-family:'JetBrains Mono', monospace; transition:.1s;
   }
   .mini-btn:hover{ color:var(--purple-glow); background:rgba(168,85,247,0.1); }
-  .add-link-btn{
+  .add-btn{
     width:100%; padding:9px; border-radius:8px; border:1px dashed rgba(168,85,247,0.3);
     background:transparent; color:var(--text-dim); font-size:12px; cursor:pointer;
-    font-family:'JetBrains Mono', monospace; margin-bottom:26px; transition:.15s;
+    font-family:'JetBrains Mono', monospace; transition:.15s;
   }
-  .add-link-btn:hover{ border-color:var(--purple); color:var(--purple-glow); }
+  .add-btn:hover{ border-color:var(--purple); color:var(--purple-glow); }
 
-  /* ---- preview mirror (mimics links.blade.php) ---- */
-  .phone{
-    width:100%; max-width:400px; height:fit-content;
-    background:#050408; border:1px solid rgba(168,85,247,0.25);
-    border-radius:28px; padding:34px 22px 30px;
-    box-shadow:0 0 50px rgba(168,85,247,0.12);
-    position:relative;
+  /* ---- preview ---- */
+  .preview-box{
+    background:#050408; border:1px solid var(--line);
+    border-radius:18px; padding:28px 22px 24px; text-align:center;
+    max-width:340px; margin:0 auto;
   }
-  .p-profile{ display:flex; flex-direction:column; align-items:center; text-align:center; margin-bottom:30px; }
-  .p-avatar{
-    width:80px; height:80px; border-radius:50%; object-fit:cover;
-    border:2px solid var(--purple);
-    box-shadow:0 0 0 5px rgba(168,85,247,0.08), 0 0 26px rgba(168,85,247,0.3);
-    margin-bottom:14px; background:#1a1625;
-  }
-  .p-name{ font-size:19px; font-weight:700; }
-  .p-handle{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--purple-glow); margin-top:3px; }
-  .p-bio{ font-size:13px; color:var(--text-dim); margin-top:10px; line-height:1.55; max-width:290px; }
-  .p-section-label{
-    font-family:'JetBrains Mono', monospace; font-size:10px; text-transform:uppercase;
-    letter-spacing:.1em; color:var(--text-dim); margin:20px 2px 8px; display:flex; align-items:center; gap:7px;
-  }
-  .p-section-label::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--purple); box-shadow:0 0 7px var(--purple-glow); }
-  .p-links{ display:flex; flex-direction:column; gap:9px; }
-  .p-link{
-    display:flex; align-items:center; gap:12px; padding:12px 14px;
-    background:var(--bg-soft); border:1px solid rgba(168,85,247,0.16); border-radius:12px;
-  }
-  .p-link-node{ width:30px; height:30px; min-width:30px; border-radius:8px; background:#1a1625; display:flex; align-items:center; justify-content:center; font-size:14px; }
-  .p-link-copy{ flex:1; min-width:0; }
-  .p-link-title{ font-size:13px; font-weight:600; }
-  .p-link-sub{ font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono', monospace; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .p-footer{ margin-top:26px; text-align:center; font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--text-faint); }
-  .p-footer span{ color:var(--purple-glow); }
-  .preview-tag{
-    text-align:center; font-family:'JetBrains Mono', monospace; font-size:10px;
-    color:var(--text-faint); margin-bottom:14px; letter-spacing:.08em; text-transform:uppercase;
-  }
+  .pv-avatar{ width:64px;height:64px;border-radius:50%; object-fit:cover; margin:0 auto 10px; display:block; background:#1a1625; }
+  .pv-name{ font-size:17px; font-weight:700; }
+  .pv-handle{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--purple-glow); margin-top:2px; }
+  .pv-bio{ font-size:13px; color:var(--text-dim); margin-top:8px; line-height:1.5; }
+  .pv-section-label{ font-family:'JetBrains Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-dim); margin:16px 2px 8px; }
+  .pv-links{ display:flex; flex-direction:column; gap:7px; }
+  .pv-link{ display:flex; align-items:center; gap:10px; padding:10px 13px; background:var(--bg-soft); border:1px solid var(--line); border-radius:10px; }
+  .pv-link-icon{ width:28px;height:28px;min-width:28px;border-radius:7px;background:#1a1625;display:flex;align-items:center;justify-content:center;font-size:13px; }
+  .pv-link-text{ flex:1;min-width:0;text-align:left;font-size:12px;font-weight:600; }
+  .pv-link-sub{ font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:1px; }
+  .pv-footer{ margin-top:20px; font-size:9px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
 
-  ::-webkit-scrollbar{ width:8px; }
-  ::-webkit-scrollbar-thumb{ background:rgba(168,85,247,0.25); border-radius:4px; }
+  ::-webkit-scrollbar{ width:6px; }
+  ::-webkit-scrollbar-thumb{ background:rgba(168,85,247,0.2); border-radius:3px; }
 
-  @media(max-width:860px){
-    .body-split{ flex-direction:column; overflow:auto; }
-    .panel-edit, .panel-preview{ width:100%; }
-    .panel-preview{ padding:24px; }
-  }
+  @media(max-width:600px){ .shell{ padding:20px 14px 40px; } }
 </style>
 </head>
 <body>
 
 @if($errors->any())
-  <div style="position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:99;background:rgba(248,113,113,0.12);color:#f87171;padding:12px 20px;border-radius:8px;font-size:13px;border:1px solid rgba(248,113,113,0.25);max-width:500px;width:calc(100%-40px)">
-    @foreach($errors->all() as $e)
-      <div>{{ $e }}</div>
-    @endforeach
+  <div style="position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:99;background:rgba(248,113,113,0.12);color:#f87171;padding:10px 18px;border-radius:8px;font-size:13px;border:1px solid rgba(248,113,113,0.25);max-width:440px;width:calc(100%-28px)">
+    @foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach
   </div>
 @endif
 
 @if(session('status'))
-  <div style="position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:99;background:rgba(74,222,128,0.12);color:#4ade80;padding:12px 20px;border-radius:8px;font-size:13px;border:1px solid rgba(74,222,128,0.25);max-width:500px;width:calc(100%-40px)">
-    {{ session('status') }}
-  </div>
+  <div style="position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:99;background:rgba(74,222,128,0.12);color:#4ade80;padding:10px 18px;border-radius:8px;font-size:13px;border:1px solid rgba(74,222,128,0.25);max-width:440px;width:calc(100%-28px)">{{ session('status') }}</div>
 @endif
 
-<div class="topbar">
-  <div class="brand"><span class="dot"></span><span>Edit Content</span></div>
-  <div class="topbar-actions">
-    <span class="save-status" id="saveStatus"></span>
-    <a class="btn" href="/analytics">← Dashboard</a>
-    <button class="btn primary" id="saveBtn" onclick="document.getElementById('editorForm').submit();">Save Changes</button>
-  </div>
-</div>
+<div class="shell">
 
-<div class="body-split">
-
-  <!-- ===== FORM PANEL ===== -->
-  <div class="panel-edit">
-
-    <div class="fieldset">
-      <div class="fieldset-title">Profile</div>
-      <label class="field-label">Nama</label>
-      <input class="field" id="f-name" data-bind="profile.name">
-      <label class="field-label">Handle</label>
-      <input class="field" id="f-handle" data-bind="profile.handle">
-      <label class="field-label">Bio</label>
-      <textarea class="field" id="f-bio" data-bind="profile.bio"></textarea>
-      <label class="field-label">Avatar URL</label>
-      <input class="field" id="f-avatar" data-bind="profile.avatar">
-    </div>
-
-    <div id="sectionsContainer"><!-- diisi JS --></div>
-
-    <form id="editorForm" method="POST" action="/editor">
-      @csrf
-      <input type="hidden" name="state_json" id="stateJson">
-    </form>
-  </div>
-
-  <!-- ===== PREVIEW PANEL ===== -->
-  <div class="panel-preview">
-    <div style="width:100%;max-width:400px;">
-      <div class="preview-tag">● Live Preview</div>
-      <div class="phone">
-        <div class="p-profile">
-          <img class="p-avatar" id="pv-avatar" src="" alt="">
-          <div class="p-name" id="pv-name"></div>
-          <div class="p-handle" id="pv-handle"></div>
-          <div class="p-bio" id="pv-bio"></div>
-        </div>
-        <div id="pv-sections"></div>
-        <div class="p-footer">built by <span id="pv-footer-handle"></span> · 2026</div>
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <h1>Editor</h1>
+        <div class="sub">Edit your link-in-bio page</div>
       </div>
     </div>
+    <div class="nav-actions">
+      <a class="nav-btn" href="/analytics">← Analytics</a>
+      <button class="nav-btn primary" id="saveBtn">Save</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+
+    <!-- === FORM === -->
+    <div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot-sm"></span>Profile</div>
+        <div class="field-grid">
+          <div class="field-row">
+            <label>Nama</label>
+            <input id="f-name" data-bind="profile.name">
+          </div>
+          <div class="field-row">
+            <label>Handle</label>
+            <input id="f-handle" data-bind="profile.handle">
+          </div>
+          <div class="field-row">
+            <label>Bio</label>
+            <textarea id="f-bio" data-bind="profile.bio"></textarea>
+          </div>
+          <div class="field-row">
+            <label>Avatar URL</label>
+            <input id="f-avatar" data-bind="profile.avatar">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot-sm"></span>Sections</div>
+        <div id="sectionsWrap"></div>
+      </div>
+
+      <form id="editorForm" method="POST" action="/editor">
+        @csrf
+        <input type="hidden" name="state_json" id="stateJson">
+      </form>
+
+    </div>
+
+    <!-- === PREVIEW === -->
+    <div>
+      <div class="card">
+        <div class="card-title"><span class="dot-sm"></span>Preview</div>
+        <div class="preview-box">
+          <img class="pv-avatar" id="pv-avatar" src="" alt="">
+          <div class="pv-name" id="pv-name"></div>
+          <div class="pv-handle" id="pv-handle"></div>
+          <div class="pv-bio" id="pv-bio"></div>
+          <div id="pv-sections"></div>
+          <div class="pv-footer">powered by <span style="color:var(--purple-glow)">Linkr</span></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
 
 <script>
-// ---------- initial state ----------
+function escA(s){ return (s||'').replace(/"/g,'&quot;'); }
+function escH(s){ var d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
 var defaultState = {
-  profile: {
-    name: "Putra",
-    handle: "@by0x_",
-    bio: "Web2 → Web3 Developer. Moove Ambassador. Building in public.",
-    avatar: "https://via.placeholder.com/96/1a1625/a855f7?text=P"
-  },
-  sections: [
-    { key:"highlight", label:"Highlight", links:[
-      { icon:"🌙", title:"Moove Ambassador", subtitle:"Official Ambassador Program", url:"#" }
-    ]},
-    { key:"social", label:"Social", links:[
-      { icon:"𝕏", title:"X (Twitter)", subtitle:"@by0x_", url:"https://x.com/by0x_" },
-      { icon:"💬", title:"Discord", subtitle:"Join community", url:"https://discord.gg/DTPJh5Bzp" }
-    ]},
-    { key:"portfolio", label:"Portfolio", links:[
-      { icon:"⌘", title:"GitHub", subtitle:"dhabyap", url:"https://github.com/dhabyap" },
-      { icon:"◈", title:"ChainTrinket", subtitle:"Physical auth on Stellar/Soroban", url:"https://dhabyap.github.io/chaintrinket/" }
-    ]},
-    { key:"contact", label:"Contact", links:[] }
-  ]
+  profile:{ name:'', handle:'', bio:'', avatar:'' },
+  sections:[]
 };
 
 var state = @json($initialState ?? null) || defaultState;
-if (!state || !state.profile) state = defaultState;
+if(!state || !state.profile) state = defaultState;
 
-// ---------- render form ----------
-var sectionsEl = document.getElementById('sectionsContainer');
-
-function uid(){ return Math.random().toString(36).slice(2,9); }
+var sectionsEl = document.getElementById('sectionsWrap');
+var formEl = document.getElementById('editorForm');
+var stateJson = document.getElementById('stateJson');
 
 function renderForm(){
-  document.getElementById('f-name').value = state.profile.name || '';
-  document.getElementById('f-handle').value = state.profile.handle || '';
-  document.getElementById('f-bio').value = state.profile.bio || '';
-  document.getElementById('f-avatar').value = state.profile.avatar || '';
+  document.getElementById('f-name').value = state.profile.name||'';
+  document.getElementById('f-handle').value = state.profile.handle||'';
+  document.getElementById('f-bio').value = state.profile.bio||'';
+  document.getElementById('f-avatar').value = state.profile.avatar||'';
 
   sectionsEl.innerHTML = '';
-  state.sections.forEach(function(section, sIdx){
+  if(!state.sections) state.sections = [];
+
+  state.sections.forEach(function(s, si){
     var wrap = document.createElement('div');
-    wrap.className = 'fieldset';
-    var title = document.createElement('div');
-    title.className = 'fieldset-title';
-    title.textContent = section.label;
-    wrap.appendChild(title);
+    wrap.style.marginBottom = '8px';
 
-    section.links.forEach(function(link, lIdx){
-      var card = document.createElement('div');
-      card.className = 'link-card';
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+    var lbl = document.createElement('input');
+    lbl.style.cssText = 'font-size:12px;font-family:JetBrains Mono,monospace;text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;';
+    lbl.placeholder = 'Section label';
+    lbl.value = s.label||'';
+    lbl.oninput = function(){ s.label = lbl.value; syncPreview(); };
+    hdr.appendChild(lbl);
 
-      var actions = document.createElement('div');
-      actions.className = 'link-card-actions';
-      actions.innerHTML =
-        '<button type="button" class="mini-btn" data-act="up">↑</button>' +
-        '<button type="button" class="mini-btn" data-act="down">↓</button>' +
-        '<button type="button" class="mini-btn" data-act="del">✕ hapus</button>';
-      actions.querySelector('[data-act="up"]').onclick = function(){ moveLink(sIdx, lIdx, -1); };
-      actions.querySelector('[data-act="down"]').onclick = function(){ moveLink(sIdx, lIdx, 1); };
-      actions.querySelector('[data-act="del"]').onclick = function(){ delLink(sIdx, lIdx); };
-      card.appendChild(actions);
+    var rmSection = document.createElement('button');
+    rmSection.type = 'button';
+    rmSection.className = 'mini-btn';
+    rmSection.textContent = '✕';
+    rmSection.onclick = function(){ state.sections.splice(si,1); renderForm(); syncPreview(); };
+    hdr.appendChild(rmSection);
+    wrap.appendChild(hdr);
 
-      var row = document.createElement('div');
-      row.className = 'link-card-row';
-      row.innerHTML =
-        '<input class="field icon-input" placeholder="🔗" value="'+escAttr(link.icon)+'">' +
-        '<input class="field" placeholder="Judul link" value="'+escAttr(link.title)+'">';
-      card.appendChild(row);
+    (s.links||[]).forEach(function(lk, li){
+      var item = document.createElement('div');
+      item.className = 'link-item';
+      item.innerHTML =
+        '<div class="row">'+
+          '<input class="icon-input" placeholder="🔗" value="'+escA(lk.icon)+'">'+
+          '<input placeholder="Title" value="'+escA(lk.title)+'">'+
+          '<input placeholder="Sub" value="'+escA(lk.subtitle||'')+'">'+
+        '</div>'+
+        '<div class="url-row">'+
+          '<input placeholder="https://..." value="'+escA(lk.url||'')+'">'+
+          '<button type="button" class="mini-btn del" style="border:1px solid rgba(248,113,113,0.3);color:var(--red);">✕</button>'+
+        '</div>'+
+        '<div class="link-actions">'+
+          '<button type="button" class="mini-btn" data-act="up">↑</button>'+
+          '<button type="button" class="mini-btn" data-act="down">↓</button>'+
+        '</div>';
 
-      var subtitle = document.createElement('input');
-      subtitle.className = 'field';
-      subtitle.placeholder = 'Subtitle';
-      subtitle.value = link.subtitle || '';
-      card.appendChild(subtitle);
+      var inputs = item.querySelectorAll('.row input');
+      inputs[0].oninput = function(){ lk.icon = inputs[0].value; syncPreview(); };
+      inputs[1].oninput = function(){ lk.title = inputs[1].value; syncPreview(); };
+      inputs[2].oninput = function(){ lk.subtitle = inputs[2].value; syncPreview(); };
 
-      var url = document.createElement('input');
-      url.className = 'field';
-      url.placeholder = 'https://...';
-      url.value = link.url || '';
-      card.appendChild(url);
+      var urlInput = item.querySelector('.url-row input');
+      urlInput.oninput = function(){ lk.url = urlInput.value; syncPreview(); };
 
-      var inputs = row.querySelectorAll('input');
-      inputs[0].oninput = function(){ link.icon = inputs[0].value; syncPreview(); };
-      inputs[1].oninput = function(){ link.title = inputs[1].value; syncPreview(); };
-      subtitle.oninput = function(){ link.subtitle = subtitle.value; syncPreview(); };
-      url.oninput = function(){ link.url = url.value; syncPreview(); };
+      item.querySelector('.del').onclick = function(){
+        s.links.splice(li,1);
+        renderForm(); syncPreview();
+      };
+      item.querySelector('[data-act="up"]').onclick = function(){ moveL(si,li,-1); };
+      item.querySelector('[data-act="down"]').onclick = function(){ moveL(si,li,1); };
 
-      wrap.appendChild(card);
+      wrap.appendChild(item);
     });
 
-    var addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'add-link-btn';
-    addBtn.textContent = '+ Tambah link di ' + section.label;
-    addBtn.onclick = function(){
-      section.links.push({ icon:'🔗', title:'Link baru', subtitle:'', url:'#' });
+    var addL = document.createElement('button');
+    addL.type = 'button';
+    addL.className = 'add-btn';
+    addL.textContent = '+ Link';
+    addL.onclick = function(){
+      if(!s.links) s.links=[];
+      s.links.push({icon:'🔗',title:'Link','subtitle':'','url':'#'});
       renderForm(); syncPreview();
     };
-    wrap.appendChild(addBtn);
-
+    wrap.appendChild(addL);
     sectionsEl.appendChild(wrap);
   });
+
+  var addSec = document.createElement('button');
+  addSec.type = 'button';
+  addSec.className = 'add-btn';
+  addSec.style.marginTop = '12px';
+  addSec.textContent = '+ Section';
+  addSec.onclick = function(){
+    state.sections.push({key:'sec-'+uid(),label:'Section',links:[]});
+    renderForm(); syncPreview();
+  };
+  sectionsEl.appendChild(addSec);
 }
 
-function moveLink(sIdx, lIdx, dir){
-  var arr = state.sections[sIdx].links;
-  var newIdx = lIdx + dir;
-  if (newIdx < 0 || newIdx >= arr.length) return;
-  var tmp = arr[lIdx]; arr[lIdx] = arr[newIdx]; arr[newIdx] = tmp;
-  renderForm(); syncPreview();
+function moveL(si,li,dir){
+  var arr = state.sections[si].links;
+  var ni = li+dir;
+  if(ni<0||ni>=arr.length)return;
+  var t=arr[li];arr[li]=arr[ni];arr[ni]=t;
+  renderForm();syncPreview();
 }
-function delLink(sIdx, lIdx){
-  state.sections[sIdx].links.splice(lIdx, 1);
-  renderForm(); syncPreview();
-}
-function escAttr(s){ return (s || '').replace(/"/g, '&quot;'); }
 
-// profile field bindings
 ['f-name','f-handle','f-bio','f-avatar'].forEach(function(id){
   document.getElementById(id).addEventListener('input', function(e){
-    var key = e.target.getAttribute('data-bind').split('.')[1];
-    state.profile[key] = e.target.value;
+    var k = e.target.getAttribute('data-bind').split('.')[1];
+    state.profile[k] = e.target.value;
     syncPreview();
   });
 });
 
-// ---------- render preview ----------
 function syncPreview(){
-  document.getElementById('pv-avatar').src = state.profile.avatar || '';
-  document.getElementById('pv-name').textContent = state.profile.name || '';
-  document.getElementById('pv-handle').textContent = state.profile.handle || '';
-  document.getElementById('pv-bio').textContent = state.profile.bio || '';
-  document.getElementById('pv-footer-handle').textContent = state.profile.handle || '';
-
-  var pvSections = document.getElementById('pv-sections');
-  pvSections.innerHTML = '';
-  state.sections.forEach(function(section){
-    if (!section.links.length) return;
-    var label = document.createElement('div');
-    label.className = 'p-section-label';
-    label.textContent = section.label;
-    pvSections.appendChild(label);
-
-    var linksWrap = document.createElement('div');
-    linksWrap.className = 'p-links';
-    section.links.forEach(function(link){
-      var a = document.createElement('div');
-      a.className = 'p-link';
-      a.innerHTML =
-        '<div class="p-link-node">'+ (link.icon || '🔗') +'</div>' +
-        '<div class="p-link-copy">' +
-          '<div class="p-link-title">'+ escHtml(link.title) +'</div>' +
-          '<div class="p-link-sub">'+ escHtml(link.subtitle) +'</div>' +
+  document.getElementById('pv-avatar').src = state.profile.avatar||'';
+  document.getElementById('pv-name').textContent = state.profile.name||'';
+  document.getElementById('pv-handle').textContent = state.profile.handle||'';
+  document.getElementById('pv-bio').textContent = state.profile.bio||'';
+  var pv = document.getElementById('pv-sections');
+  pv.innerHTML = '';
+  (state.sections||[]).forEach(function(sec){
+    if(!sec.links || !sec.links.length) return;
+    var lbl = document.createElement('div');
+    lbl.className = 'pv-section-label';
+    lbl.textContent = sec.label;
+    pv.appendChild(lbl);
+    var w = document.createElement('div');
+    w.className = 'pv-links';
+    sec.links.forEach(function(lk){
+      w.innerHTML +=
+        '<div class="pv-link">'+
+          '<div class="pv-link-icon">'+(lk.icon||'🔗')+'</div>'+
+          '<div class="pv-link-text">'+escH(lk.title)+'<div class="pv-link-sub">'+escH(lk.subtitle||'')+'</div></div>'+
         '</div>';
-      linksWrap.appendChild(a);
     });
-    pvSections.appendChild(linksWrap);
+    pv.appendChild(w);
   });
-
-  document.getElementById('stateJson').value = JSON.stringify(state);
-  var status = document.getElementById('saveStatus');
-  status.textContent = 'unsaved changes';
+  stateJson.value = JSON.stringify(state);
 }
 
-function escHtml(s){
-  var d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
-
-document.getElementById('editorForm').addEventListener('submit', function(){
-  document.getElementById('stateJson').value = JSON.stringify(state);
+document.getElementById('saveBtn').addEventListener('click', function(){
+  stateJson.value = JSON.stringify(state);
+  formEl.submit();
 });
 
-renderForm();
-syncPreview();
-document.getElementById('saveStatus').textContent = '';
+renderForm(); syncPreview();
 </script>
-
 </body>
 </html>
