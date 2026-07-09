@@ -122,6 +122,31 @@
 
   .empty{ text-align:center; padding:30px 20px; color:var(--text-faint); font-size:12px; background:var(--bg-soft); border-radius:10px; border:1px dashed var(--line); }
 
+  .ai-card{
+    background:linear-gradient(135deg, rgba(168,85,247,0.08), rgba(109,40,217,0.04));
+    border:1px solid rgba(168,85,247,0.2); border-radius:14px; padding:20px; margin-bottom:20px;
+  }
+  .ai-input{
+    width:100%; padding:12px 14px; border-radius:10px;
+    border:1px solid rgba(168,85,247,0.25); background:rgba(8,7,12,0.6);
+    color:var(--text); font-size:13px; outline:none; font-family:'Inter',sans-serif;
+    min-height:64px; resize:vertical; transition:border-color .15s;
+  }
+  .ai-input:focus{ border-color:var(--purple); box-shadow:0 0 0 1px var(--purple) inset; }
+  .ai-input::placeholder{ color:var(--text-faint); }
+  .ai-actions{ display:flex; gap:8px; margin-top:10px; align-items:center; }
+  .gen-btn{
+    padding:10px 20px; border-radius:9px; border:none;
+    background:linear-gradient(135deg, var(--purple-deep), var(--purple));
+    color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif;
+    transition:opacity .15s; display:flex; align-items:center; gap:7px;
+  }
+  .gen-btn:hover{ opacity:.9; }
+  .gen-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .gen-spinner{ width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:none; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .ai-hint{ font-size:11px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
+
   /* ---- preview inbox ---- */
   .preview-box{
     background:#050408; border:1px solid var(--line);
@@ -183,6 +208,22 @@
 
     <!-- === EDIT PANEL === -->
     <div>
+      <!-- AI Generator -->
+      <div class="ai-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--purple-glow);box-shadow:0 0 8px var(--purple-glow);"></span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-dim);">AI Generate ✦</span>
+        </div>
+        <textarea class="ai-input" id="aiPrompt" placeholder="Describe your page...&#10;Example: I'm a Web3 developer building on Stellar. I have GitHub, X/Twitter, and a portfolio project called ChainTrinket."></textarea>
+        <div class="ai-actions">
+          <button class="gen-btn" id="genBtn">
+            <span class="gen-spinner" id="genSpinner"></span>
+            <span id="genLabel">Generate</span>
+          </button>
+          <span class="ai-hint">AI auto-fills the form — edit as needed</span>
+        </div>
+      </div>
+
       <!-- Profile -->
       <div class="card">
         <div class="card-title"><span class="label">Profile</span></div>
@@ -400,6 +441,41 @@ function syncPreview(){
 document.getElementById('saveBtn').addEventListener('click', function(){
   stateJson.value = JSON.stringify(state);
   formEl.submit();
+});
+
+document.getElementById('genBtn').addEventListener('click', function(){
+  var prompt = document.getElementById('aiPrompt').value;
+  if(!prompt) return;
+
+  var btn = document.getElementById('genBtn');
+  var spinner = document.getElementById('genSpinner');
+  var label = document.getElementById('genLabel');
+
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  label.textContent = 'Generating...';
+
+  fetch('/editor/ai-generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+    body: JSON.stringify({ prompt: prompt })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if(data.error) {
+        alert(data.error);
+    } else {
+        state = data;
+        renderForm();
+        syncPreview();
+    }
+  })
+  .catch(err => alert('Generation failed'))
+  .finally(() => {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    label.textContent = 'Generate';
+  });
 });
 
 renderForm(); syncPreview();

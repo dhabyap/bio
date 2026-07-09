@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/analytics/clear-test', [LinkController::class, 'clearTest']);
     Route::get('/editor', [EditorController::class, 'index']);
     Route::post('/editor', [EditorController::class, 'update']);
+    Route::post('/editor/ai-generate', [EditorController::class, 'aiGenerate']);
 });
 
 // Tracking (no CSRF needed)
