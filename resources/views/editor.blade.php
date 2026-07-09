@@ -165,6 +165,20 @@
 </head>
 <body>
 
+@if($errors->any())
+  <div style="position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:99;background:rgba(248,113,113,0.12);color:#f87171;padding:12px 20px;border-radius:8px;font-size:13px;border:1px solid rgba(248,113,113,0.25);max-width:500px;width:calc(100%-40px)">
+    @foreach($errors->all() as $e)
+      <div>{{ $e }}</div>
+    @endforeach
+  </div>
+@endif
+
+@if(session('status'))
+  <div style="position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:99;background:rgba(74,222,128,0.12);color:#4ade80;padding:12px 20px;border-radius:8px;font-size:13px;border:1px solid rgba(74,222,128,0.25);max-width:500px;width:calc(100%-40px)">
+    {{ session('status') }}
+  </div>
+@endif
+
 <div class="topbar">
   <div class="brand"><span class="dot"></span><span>Edit Content</span></div>
   <div class="topbar-actions">

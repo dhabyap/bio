@@ -71,12 +71,14 @@ class LinkController extends Controller
     public function track(Request $request)
     {
         $validated = $request->validate([
+            'link_content_id' => 'required|exists:link_contents,id',
             'link_name' => 'required|string|max:255',
             'link_url' => 'nullable|string|max:500',
             'source' => 'nullable|string|max:500',
         ]);
 
         \App\Models\LinkClick::create([
+            'link_content_id' => $validated['link_content_id'],
             'link_name' => $validated['link_name'],
             'link_url' => $validated['link_url'] ?? null,
             'source' => $validated['source'] ?? $request->header('referer'),
@@ -99,10 +101,7 @@ class LinkController extends Controller
                 'name' => $user->name,
                 'bio' => $user->bio ?? '',
                 'avatar' => $user->avatar ?? '',
-                'links' => [
-                    ['title' => 'GitHub', 'url' => 'https://github.com/' . $username, 'icon' => '⌘'],
-                    ['title' => 'X (Twitter)', 'url' => 'https://x.com/' . $username, 'icon' => '𝕏'],
-                ],
+                'links' => [],
             ];
         } else {
             $state = $content->state;

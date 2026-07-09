@@ -16,10 +16,7 @@ class EditorController extends Controller
                 'name' => $user->name,
                 'bio' => $user->bio ?? '',
                 'avatar' => $user->avatar ?? '',
-                'links' => [
-                    ['title' => 'GitHub', 'url' => 'https://github.com/' . $user->username, 'icon' => '⌘'],
-                    ['title' => 'X (Twitter)', 'url' => 'https://x.com/' . $user->username, 'icon' => '𝕏'],
-                ],
+                'links' => [],
             ])]
         );
 

@@ -43,7 +43,7 @@
   <div class="links">
     @foreach($state['links'] as $link)
       <a class="link-btn" href="{{ $link['url'] }}" target="_blank" rel="noopener"
-         onclick="trackClick('{{ $link['title'] }}','{{ $link['url'] }}')">
+         onclick="trackClick('{{ $link['title'] }}','{{ $link['url'] }}',{{ $user->linkContent->id }})">
         <span class="icon">{{ $link['icon'] ?? '→' }}</span>
         <span class="label">{{ $link['title'] }}</span>
         <span class="arrow">↗</span>
@@ -55,8 +55,8 @@
 </div>
 
 <script>
-function trackClick(name, url){
-  var payload = JSON.stringify({link_name: name, link_url: url, source: document.referrer || ''});
+function trackClick(name, url, contentId){
+  var payload = JSON.stringify({link_content_id: contentId, link_name: name, link_url: url, source: document.referrer || ''});
   navigator.sendBeacon('/track-click', new Blob([payload], {type: 'application/json'}));
 }
 </script>

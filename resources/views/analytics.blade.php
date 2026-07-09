@@ -189,6 +189,12 @@
 
 <div class="shell">
 
+  @if(session('status'))
+    <div style="background:rgba(74,222,128,0.1);color:#4ade80;padding:12px;border-radius:8px;margin-bottom:20px;font-size:13px;border:1px solid rgba(74,222,128,0.2)">
+      {{ session('status') }}
+    </div>
+  @endif
+
   <div class="topbar">
     <div class="brand">
       <span class="dot"></span>
