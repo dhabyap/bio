@@ -56,14 +56,14 @@ class LinkController extends Controller
     public function track(Request $request)
     {
         $validated = $request->validate([
-            'link_content_id' => 'required|exists:link_contents,id',
+            'link_content_id' => 'nullable|exists:link_contents,id',
             'link_name' => 'required|string|max:255',
             'link_url' => 'nullable|string|max:500',
             'source' => 'nullable|string|max:500',
         ]);
 
         \App\Models\LinkClick::create([
-            'link_content_id' => $validated['link_content_id'],
+            'link_content_id' => $validated['link_content_id'] ?? null,
             'link_name' => $validated['link_name'],
             'link_url' => $validated['link_url'] ?? null,
             'source' => $validated['source'] ?? $request->header('referer'),
@@ -98,6 +98,7 @@ class LinkController extends Controller
                 'avatar' => $user->avatar ?? '',
                 'links' => [],
             ];
+            $sections = [['key' => 'links', 'label' => 'Links', 'links' => []]];
         } elseif (isset($raw['name'])) {
             $state = [
                 'name' => $raw['name'] ?? $user->name,
@@ -106,6 +107,7 @@ class LinkController extends Controller
                 'avatar' => $raw['avatar'] ?? '',
                 'links' => $raw['links'] ?? [],
             ];
+            $sections = [['key' => 'links', 'label' => 'Links', 'links' => $raw['links'] ?? []]];
         } elseif (isset($raw['profile'])) {
             $state = [
                 'name' => $raw['profile']['name'] ?? $user->name,
@@ -114,7 +116,8 @@ class LinkController extends Controller
                 'avatar' => $raw['profile']['avatar'] ?? '',
                 'links' => [],
             ];
-            foreach ($raw['sections'] ?? [] as $sec) {
+            $sections = $raw['sections'] ?? [];
+            foreach ($sections as $sec) {
                 foreach ($sec['links'] ?? [] as $lk) {
                     $state['links'][] = $lk;
                 }
@@ -127,9 +130,10 @@ class LinkController extends Controller
                 'avatar' => $user->avatar ?? '',
                 'links' => [],
             ];
+            $sections = [['key' => 'links', 'label' => 'Links', 'links' => []]];
         }
 
-        return view('links', compact('user', 'state'));
+        return view('links', compact('user', 'state', 'sections'));
     }
 
     public function clearTest()
