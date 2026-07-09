@@ -140,16 +140,24 @@ $prompt";
             ], 500);
         }
 
+        // Strip trailing data: [DONE] that 9Router appends
+        $response = preg_replace('/\s*data:\s*\[DONE\]\s*$/', '', trim($response));
+
         $decoded = json_decode($response, true);
-        $message = $decoded['choices'][0]['message'] ?? [];
+        if (!$decoded || !isset($decoded['choices'][0]['message'])) {
+            $err = json_last_error_msg();
+            return response()->json(['error' => "Failed to parse LLM response: $err"], 500);
+        }
+
+        $message = $decoded['choices'][0]['message'];
 
         // Try content first, then reasoning_content
         $content = $message['content'] ?? '';
-        if (empty($content)) {
+        if (empty(trim($content))) {
             $content = $message['reasoning_content'] ?? '';
         }
 
-        if (empty($content)) {
+        if (empty(trim($content))) {
             return response()->json(['error' => 'Empty AI response'], 500);
         }
 
@@ -165,7 +173,6 @@ $prompt";
 
         $state = json_decode($content, true);
         if (!$state || !isset($state['profile'])) {
-            // Try JSON decode with error reporting
             $err = json_last_error_msg();
             return response()->json(['error' => "AI returned invalid format: $err"], 500);
         }
