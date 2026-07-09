@@ -11,9 +11,11 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         User::create([
+            'username' => 'by0x_',
             'name' => 'Putra',
             'email' => 'by0x_@example.com',
             'password' => Hash::make('admin123'),
+            'bio' => 'Web2 → Web3 Developer. Moove Ambassador. Building in public.',
         ]);
     }
 }

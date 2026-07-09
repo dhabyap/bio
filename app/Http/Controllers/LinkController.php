@@ -2,62 +2,69 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LinkClick;
+use App\Models\User;
+use App\Models\LinkContent;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class LinkController extends Controller
 {
     public function index(Request $request)
     {
+        // Only return the user's own content for the authenticated user
+        $user = auth()->user();
         $range = $request->get('range', 'all');
 
-        $query = LinkClick::query();
-        $recentQuery = LinkClick::query();
+        $query = \App\Models\LinkClick::query();
+
+        // If user is admin, show all clicks
+        // Otherwise scope to user's link_content
+        if ($user) {
+            $contentIds = LinkContent::where('user_id', $user->id)->pluck('id');
+            $query->whereIn('link_content_id', $contentIds);
+        }
 
         if ($range === 'today') {
             $query->whereDate('created_at', today());
-            $recentQuery->whereDate('created_at', today());
         } elseif ($range === '7d') {
             $query->where('created_at', '>=', now()->subDays(7));
-            $recentQuery->where('created_at', '>=', now()->subDays(7));
         } elseif ($range === '30d') {
             $query->where('created_at', '>=', now()->subDays(30));
-            $recentQuery->where('created_at', '>=', now()->subDays(30));
         }
 
         $totalClicks = (clone $query)->count();
+
         $clicksByLink = (clone $query)
-            ->select('link_name', DB::raw('count(*) as total'))
+            ->select('link_name', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
             ->groupBy('link_name')
-            ->get();
-        $recentClicks = $recentQuery
-            ->latest()
-            ->limit(50)
+            ->orderByDesc('total')
             ->get();
 
-        // Daily clicks for trend chart (use raw SQL compatible with SQLite)
         $dailyClicks = (clone $query)
             ->select(
-                DB::raw("date(created_at) as date"),
-                DB::raw('count(*) as total')
+                \Illuminate\Support\Facades\DB::raw("date(created_at) as date"),
+                \Illuminate\Support\Facades\DB::raw('count(*) as total')
             )
             ->groupBy('date')
             ->orderBy('date')
             ->get();
 
-        // Traffic sources
         $trafficSources = (clone $query)
-            ->select('source', DB::raw('count(*) as total'))
             ->whereNotNull('source')
+            ->where('source', '!=', '')
+            ->select('source', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
             ->groupBy('source')
             ->orderByDesc('total')
-            ->get()
-            ->toArray();
+            ->get();
+
+        $recentClicks = (clone $query)
+            ->where('link_name', '!=', '') // exclude empty
+            ->latest()
+            ->limit(50)
+            ->get();
 
         return view('analytics', compact(
-            'totalClicks', 'clicksByLink', 'recentClicks',
-            'range', 'dailyClicks', 'trafficSources'
+            'totalClicks', 'clicksByLink', 'dailyClicks', 'trafficSources',
+            'recentClicks', 'range'
         ));
     }
 
@@ -65,24 +72,50 @@ class LinkController extends Controller
     {
         $validated = $request->validate([
             'link_name' => 'required|string|max:255',
-            'link_url' => 'nullable|string|max:1000',
+            'link_url' => 'nullable|string|max:500',
+            'source' => 'nullable|string|max:500',
         ]);
 
-        LinkClick::create([
+        \App\Models\LinkClick::create([
             'link_name' => $validated['link_name'],
-            'link_url' => $validated['link_url'] ?? '',
-            'referer' => $request->header('referer', ''),
-            'user_agent' => $request->header('user-agent', ''),
+            'link_url' => $validated['link_url'] ?? null,
+            'source' => $validated['source'] ?? $request->header('referer'),
+            'referer' => $request->header('referer'),
+            'user_agent' => $request->header('user-agent'),
             'ip' => $request->ip(),
-            'source' => $request->input('source', ''),
         ]);
 
-        return response()->json(['status' => 'ok']);
+        return response()->json(['ok' => true]);
+    }
+
+    public function show($username)
+    {
+        $user = User::where('username', $username)->firstOrFail();
+        $content = $user->linkContent;
+
+        if (!$content || !$content->state) {
+            // Default state if no saved content
+            $state = [
+                'name' => $user->name,
+                'bio' => $user->bio ?? '',
+                'avatar' => $user->avatar ?? '',
+                'links' => [
+                    ['title' => 'GitHub', 'url' => 'https://github.com/' . $username, 'icon' => '⌘'],
+                    ['title' => 'X (Twitter)', 'url' => 'https://x.com/' . $username, 'icon' => '𝕏'],
+                ],
+            ];
+        } else {
+            $state = $content->state;
+        }
+
+        return view('links', compact('user', 'state'));
     }
 
     public function clearTest()
     {
-        $deleted = LinkClick::whereIn('link_name', ['test', 'v'])->delete();
-        return redirect('/analytics')->with('cleared', true);
+        $user = auth()->user();
+        $contentIds = LinkContent::where('user_id', $user->id)->pluck('id');
+        \App\Models\LinkClick::whereIn('link_content_id', $contentIds)->delete();
+        return back()->with('status', 'Test data cleared');
     }
 }

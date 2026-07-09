@@ -9,26 +9,42 @@ class EditorController extends Controller
 {
     public function index()
     {
-        $content = LinkContent::first();
-        $initialState = $content ? $content->state : null;
-        return view('editor', compact('initialState'));
+        $user = auth()->user();
+        $content = LinkContent::firstOrCreate(
+            ['user_id' => $user->id],
+            ['state' => [
+                'name' => $user->name,
+                'bio' => $user->bio ?? '',
+                'avatar' => $user->avatar ?? '',
+                'links' => [
+                    ['title' => 'GitHub', 'url' => 'https://github.com/' . $user->username, 'icon' => '⌘'],
+                    ['title' => 'X (Twitter)', 'url' => 'https://x.com/' . $user->username, 'icon' => '𝕏'],
+                ],
+            ]]
+        );
+
+        return view('editor', compact('content'));
     }
 
     public function update(Request $request)
     {
-        $data = $request->validate([
-            'state_json' => 'required|json',
+        $user = auth()->user();
+        $request->validate([
+            'state' => 'required|array',
+            'state.name' => 'required|string|max:255',
+            'state.bio' => 'nullable|string|max:1000',
+            'state.avatar' => 'nullable|string|max:500',
+            'state.links' => 'required|array',
+            'state.links.*.title' => 'required|string|max:255',
+            'state.links.*.url' => 'required|url|max:500',
+            'state.links.*.icon' => 'nullable|string|max:20',
         ]);
 
-        $state = json_decode($data['state_json'], true);
+        $content = LinkContent::updateOrCreate(
+            ['user_id' => $user->id],
+            ['state' => $request->state]
+        );
 
-        $content = LinkContent::first();
-        if ($content) {
-            $content->update(['state' => $state]);
-        } else {
-            LinkContent::create(['state' => $state]);
-        }
-
-        return redirect('/editor')->with('saved', true);
+        return redirect('/editor')->with('status', 'Saved!');
     }
 }

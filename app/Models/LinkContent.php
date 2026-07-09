@@ -6,12 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class LinkContent extends Model
 {
-    protected $fillable = ['state'];
+    protected $fillable = ['user_id', 'state'];
 
     protected function casts(): array
     {
         return [
             'state' => 'array',
         ];
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }
